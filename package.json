@@ -1,0 +1,21 @@
+{
+  "name": "vegas",
+  "version": "0.0.0",
+  "description": "A JS probability engine.",
+  "main": "src/index.js",
+  "repository": {
+   "type": "git",
+   "url": "https://github.com/jayflo/vegas"
+  },
+  "keywords": [
+   "npm",
+   "search",
+   "vegas"
+  ],
+  "author": "Jaret Flores <jarflores@gmail.com>",
+  "license": "GPLv2",
+  "bugs": {
+   "url": "https://github.com/jayflo/vegas/issues"
+  },
+  "homepage": "https://github.com/jayflo/vegas"
+}
