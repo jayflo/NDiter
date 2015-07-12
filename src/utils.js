@@ -3,12 +3,38 @@
 module.exports = (function() {
 
   return {
-    binarySearch: binarySearch
+    binarySearch: _binarySearch,
+    sequence: _sequence,
+    noop: function() {}
   };
 
 })();
 
-function binarySearch(arr, key, a, b) {
+function _sequence(funcArr, returnValues) {
+  return returnValues ? _retSequence(funcArr) : _voidSequence(funcArr);
+}
+
+function _voidSequence(funcArr) {
+  return function() {
+    for(var i = 0, len = funcArr.length; i < len; i++) {
+      funcArr.apply(null, Array.prototype.slice(arguments, 1));
+    }
+  };
+}
+
+function _retSequence(funcArr) {
+  return function() {
+    var tmp = [];
+
+    for(var i = 0, len = funcArr.length; i < len; i++) {
+      tmp.push(funcArr.apply(null, Array.prototype.slice(arguments, 1)));
+    }
+
+    return tmp;
+  };
+}
+
+function _binarySearch(arr, key, a, b) {
   var mid;
 
   while(b >= a) {
