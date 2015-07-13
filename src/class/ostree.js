@@ -1,6 +1,7 @@
 'use strict';
 
-var TreeNode = require('./TreeNode.js');
+var treeNode = require('./treenode.js'),
+  traverse = require('./traverse.js');
 
 module.exports = (function() {
   return {
@@ -22,8 +23,7 @@ function OSTree(kwargs) {
   this._SENTINEL_ = _getSentinel();
   this.minimum = this._SENTINEL_;
   this.maximum = this._SENTINEL_;
-  this.root = kwargs.root === undefined ? this._SENTINEL_ :
-    this.add(kwargs.root);
+  this.root = kwargs.root === undefined ? this._SENTINEL_ : this.add(kwargs.root);
 }
 
 /**
@@ -41,7 +41,15 @@ OSTree.prototype.Node = function(keyObj, value, freq) {
     value = keyObj;
   }
 
-  n = TreeNode.get({ key: key, value: value });
+  n = treeNode.get({
+    key: key,
+    value: value,
+    left: this._SENTINEL_,
+    right: this._SENTINEL_,
+    next: this._SENTINEL_,
+    prev: this._SENTINEL_
+  });
+
   n.color = COLOR.red;
   _osNodeDefaults(n, freq);
 
@@ -189,6 +197,28 @@ OSTree.prototype.freqSelect = function(f) {
   return null;
 };
 
+OSTree.prototype.count = function() {
+  return this.root.size;
+};
+
+OSTree.prototype.totalFreq = function() {
+  return this.root.freqSize;
+};
+
+OSTree.prototype.iterator = function() {
+  return traverse.iterator({
+    pre: {
+      next: this.minimum
+    },
+    hasNext: function(curr) {
+      return curr.next !== this._SENTINEL_;
+    },
+    next: function(curr) {
+      return curr.next;
+    }
+  }, this);
+};
+
 /**
  * Private
  */
@@ -200,7 +230,7 @@ function _osNodeDefaults(node, freq) {
 }
 
 function _getSentinel() {
-  var s = TreeNode.get({
+  var s = treeNode.get({
     key: null,
     value: null,
     parent: s,

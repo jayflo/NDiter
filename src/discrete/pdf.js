@@ -1,45 +1,66 @@
 'use strict';
 
 var rand = require('../rand.js'),
-  binarySearch = require('../utils.js').binarySearch;
+  osTree = require('../class/ostree.js'),
+  traverse = require('../class/traverse.js');
 
 module.exports = (function() {
   return {
     get: function(kwargs) {
       return new PDF(kwargs);
-    }
+    },
+
+    ctor: PDF
   };
 })();
 
-function Outcome(kwargs) {
-  this.key = kwargs.key;
-  this.value = kwargs.value || null;
-  this.freq = isNaN(kwargs.frequency) ? 0 : kwargs.freq;
-}
-
 function PDF(kwargs) {
-  this.hash = kwargs.hash;
-  this.totalFreq = 0;
-  this.outcomes = kwargs.outcomes ? this.addOutcomes(kwargs.outcomes) : [];
+  this._osTree = osTree.get();
+  this._lookup = {};
+
+  if(kwargs.outcomes) {
+    this.add(kwargs.outcomes);
+  }
 }
 
-PDF.prototype.addOutcome = function(outcome) {
-};
+PDF.prototype.add = function(keyObj, value, freq) {
+  if(keyObj.hasOwnProperty('key')) {
+    keyObj = [keyObj];
+  } else if(!Array.isArray(keyObj)) {
+    keyObj = [{ key: keyObj, value: value, freq: freq }];
+  }
 
-PDF.prototype.addOutcomes = function(outcomes) {
-  for(var i = 0, len = outcomes.length; i < len; i++) {
-    this.addOutcome(outcomes[i]);
+  for(var i = 0, len = keyObj.length; i < len; i++) {
+    this._lookup[keyObj[i].key] = this._osTree.add(keyObj[i]);
   }
 };
 
-PDF.prototype.exec = function() {
-  return _determineOutcome(this.outcomes, rand._int(0, this.totalFreq));
+PDF.prototype.delete = function(key) {
+  if(!this._lookup.hasOwnProperty(key)) {
+    return false;
+  }
+
+  this._osTree.delete(this._lookup[key]);
+  delete this._lookup[key];
+
+  return true;
 };
 
-/**
- * Private
- */
+PDF.prototype.exec = function() {
+  return this._osTree.freqSelect(rand._int(0, this._osTree.totalFreq()));
+};
 
-function _determineOutcome(eventArr, t) {
+PDF.prototype.generator = function() {
+  return traverse.generator({
+    next: function() {
+      return this.exec();
+    },
+    clean: function(node) {
+      return node.value;
+    }
+  }, this);
+};
 
-}
+PDF.prototype.outcomeIterator = function() {
+  return this._osTree.iterator();
+};
