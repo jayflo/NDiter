@@ -1,6 +1,6 @@
 'use strict';
 
-var rand = require('../rand.js'),
+var type = require('./type.js'),
   osTree = require('../class/ostree.js'),
   traverse = require('../class/traverse.js');
 
@@ -17,6 +17,7 @@ module.exports = (function() {
 function PDF(kwargs) {
   this._osTree = osTree.get();
   this._lookup = {};
+  this._rng = type.generator('int', 0, this._osTree.totalFreq);
 
   if(kwargs.outcomes) {
     this.add(kwargs.outcomes);
@@ -47,7 +48,7 @@ PDF.prototype.delete = function(key) {
 };
 
 PDF.prototype.exec = function() {
-  return this._osTree.freqSelect(rand._int(0, this._osTree.totalFreq()));
+  return this._osTree.freqSelect(this._rng.next());
 };
 
 PDF.prototype.generator = function() {

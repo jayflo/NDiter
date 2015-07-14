@@ -27,7 +27,7 @@ Iter.prototype.hasNext = function() {
 };
 
 Iter.prototype.next = function() {
-  this._curr = this._next(arguments);
+  this._curr = this._next.apply(null, arguments);
   this.iterations++;
 
   return this._clean(this._curr);
