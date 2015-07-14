@@ -30,14 +30,16 @@ function OSTree(kwargs) {
  * Prototype
  */
 
-OSTree.prototype.Node = function(keyObj, value, freq) {
+OSTree.prototype.Node = function(keyObj, value, weight) {
   var n, key;
 
   if(keyObj.hasOwnProperty('key')) {
     key = keyObj.key;
     value = keyObj.value;
-    freq = keyObj.freq;
-  } else if(value === null || value === undefined) {
+    weight = keyObj.weight;
+  }
+
+  if(value === null || value === undefined) {
     value = keyObj;
   }
 
@@ -51,13 +53,13 @@ OSTree.prototype.Node = function(keyObj, value, freq) {
   });
 
   n.color = COLOR.red;
-  _osNodeDefaults(n, freq);
+  _osNodeDefaults(n, weight);
 
   return n;
 };
 
-OSTree.prototype.add = function(keyObj, value, freq) {
-  var m = this.Node(keyObj, value, freq);
+OSTree.prototype.add = function(keyObj, value, weight) {
+  var m = this.Node(keyObj, value, weight);
 
   this.insert(m);
 
@@ -167,7 +169,7 @@ OSTree.prototype.maxAtNode = function(node) {
 OSTree.prototype.rankSelect = function(i) {
   var rank, node = this.root;
 
-  while(node !== this._SENTINEL) {
+  while(node !== this._SENTINEL_) {
     rank = node.size;
 
     if(i === rank) {
@@ -180,18 +182,18 @@ OSTree.prototype.rankSelect = function(i) {
   return null;
 };
 
-OSTree.prototype.freqSelect = function(f) {
-  var freqL, freqR, node = this.root;
+OSTree.prototype.weightSelect = function(f) {
+  var weightL, weightR, node = this.root;
 
-  while(node !== this._SENTINEL) {
-    freqL = node.left.freqSize;
-    freqR = freqL + node.freq;
+  while(node !== this._SENTINEL_) {
+    weightL = node.left.totalWeight;
+    weightR = weightL + node.weight;
 
-    if(freqL < f && f <= freqR) {
+    if(weightL < f && f <= weightR) {
       return node;
     }
 
-    node = f <= freqL ? node.left : node.right;
+    node = f <= weightL ? node.left : node.right;
   }
 
   return null;
@@ -201,8 +203,15 @@ OSTree.prototype.count = function() {
   return this.root.size;
 };
 
-OSTree.prototype.totalFreq = function() {
-  return this.root.freqSize;
+OSTree.prototype.totalWeight = function() {
+  return this.root.totalWeight;
+};
+
+OSTree.prototype.forBranch = function(node, fn) {
+  while(node !== this._SENTINEL_) {
+    fn(node);
+    node = node.parent;
+  }
 };
 
 OSTree.prototype.iterator = function() {
@@ -223,10 +232,10 @@ OSTree.prototype.iterator = function() {
  * Private
  */
 
-function _osNodeDefaults(node, freq) {
+function _osNodeDefaults(node, weight) {
   node.size = 0;
-  node.freq = isNaN(freq) ? 1 : freq;
-  node.freqSize = 0;
+  node.weight = isNaN(weight) ? 1 : weight;
+  node.totalWeight = 0;
 }
 
 function _getSentinel() {
@@ -242,7 +251,7 @@ function _getSentinel() {
 
   s.color = COLOR.black;
   _osNodeDefaults(s);
-  s.freq = 0;
+  s.weight = 0;
 
   return s;
 }
@@ -418,13 +427,13 @@ function _colorFixup(tree, node) {
 }
 
 function _statFixupDesc(m, n) {
-  m.freqSize += n.freqSize;
+  m.totalWeight += n.totalWeight;
   m.size += 1;
 }
 
 function _setStats(n) {
   n.size = n.left.size + n.right.size + 1;
-  n.freqSize = n.left.freqSize + n.right.freqSize + n.freqSize;
+  n.totalWeight = n.left.totalWeight + n.right.totalWeight + n.totalWeight;
 }
 
 function _statFixupRotate(p, m) {

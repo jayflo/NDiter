@@ -2,13 +2,17 @@
 
 module.exports = (function() {
   return {
-    iterator: function(kwargs) {
-      return new Iter(kwargs);
+    iterator: function(kwargs, thisArg) {
+      return new Iter(kwargs, thisArg);
     },
 
-    generator: function(kwargs) {
-      return new Gen(kwargs);
-    }
+    iterCtor: Iter,
+
+    generator: function(kwargs, thisArg) {
+      return new Gen(kwargs, thisArg);
+    },
+
+    genCtor: Gen
   };
 })();
 

@@ -7,28 +7,28 @@ var type = require('./type.js'),
 module.exports = (function() {
   return {
     get: function(kwargs) {
-      return new PDF(kwargs);
+      return new Dpdf(kwargs);
     },
 
-    ctor: PDF
+    ctor: Dpdf
   };
 })();
 
-function PDF(kwargs) {
+function Dpdf(kwargs) {
   this._osTree = osTree.get();
   this._lookup = {};
-  this._rng = type.generator('int', 0, this._osTree.totalFreq);
+  this._rng = type.generator('int', 0, this._osTree.totalWeight);
 
   if(kwargs.outcomes) {
     this.add(kwargs.outcomes);
   }
 }
 
-PDF.prototype.add = function(keyObj, value, freq) {
+Dpdf.prototype.add = function(keyObj, value, weight) {
   if(keyObj.hasOwnProperty('key')) {
     keyObj = [keyObj];
   } else if(!Array.isArray(keyObj)) {
-    keyObj = [{ key: keyObj, value: value, freq: freq }];
+    keyObj = [{ key: keyObj, value: value, weight: weight }];
   }
 
   for(var i = 0, len = keyObj.length; i < len; i++) {
@@ -36,7 +36,15 @@ PDF.prototype.add = function(keyObj, value, freq) {
   }
 };
 
-PDF.prototype.delete = function(key) {
+Dpdf.prototype.addOrUpdate = function(keyObj, increment) {
+  if(this._lookup.hasOwnProperty(keyObj.key)) {
+    (increment ? this.increment : this.setWeight)(keyObj.key, keyObj.weight);
+  } else {
+    this.add(keyObj);
+  }
+};
+
+Dpdf.prototype.delete = function(key) {
   if(!this._lookup.hasOwnProperty(key)) {
     return false;
   }
@@ -47,14 +55,36 @@ PDF.prototype.delete = function(key) {
   return true;
 };
 
-PDF.prototype.exec = function() {
-  return this._osTree.freqSelect(this._rng.next());
+Dpdf.prototype.setWeight = function(key, weight) {
+  if(!this._lookup.hasOwnProperty(key)) {
+    return false;
+  }
+
+  var node = this._lookup[key],
+    dw = weight - node.weight;
+
+  node.weight = weight;
+  this._osTree.forBranch(node, function(n) {
+    n.totalWeight += dw;
+  });
 };
 
-PDF.prototype.generator = function() {
+Dpdf.prototype.increment = function(key, dw) {
+  if(!this._lookup.hasOwnProperty(key)) {
+    return false;
+  }
+
+  this.setWeight(this._lookup[key].weight + dw);
+};
+
+Dpdf.prototype.poll = function() {
+  return this._osTree.weightSelect(this._rng.next());
+};
+
+Dpdf.prototype.generator = function() {
   return traverse.generator({
     next: function() {
-      return this.exec();
+      return this.poll();
     },
     clean: function(node) {
       return node.value;
@@ -62,6 +92,6 @@ PDF.prototype.generator = function() {
   }, this);
 };
 
-PDF.prototype.outcomeIterator = function() {
+Dpdf.prototype.outcomeIterator = function() {
   return this._osTree.iterator();
 };
