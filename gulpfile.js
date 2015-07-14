@@ -25,8 +25,14 @@ gulp.task('testonce', function() {
     .pipe(mocha({
       // grep: '.*',
       reporter: 'spec',
-      bail: true,
+      bail: false,
     }));
+});
+
+gulp.task('doc-watch', function() {
+  watch(paths.src, batch(function(events, done) { // jshint ignore:line
+    gulp.start('docs', done);
+  }));
 });
 
 gulp.task('docs', function() {

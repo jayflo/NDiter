@@ -1,35 +1,112 @@
 'use strict';
 
+/**
+ * @module ostree
+ */
+
 var treeNode = require('./treenode.js'),
   traverse = require('./traverse.js');
 
 module.exports = (function() {
   return {
+    /**
+     * Getter for OSTree class.
+     * @see {@link module:ostree~OSTree}
+     *
+     * @param  {object}  kwargs
+     * See {@link module:ostree~OSTree}
+     *
+     * @return {OSTree}
+     */
     get: function(kwargs) {
-      return new OSTree(kwargs);
+      return new OSTree(kwargs || {});
     },
 
+    /**
+     * @see {@link module:ostree~OSTree}
+     * @function
+     */
     ctor: OSTree
   };
 })();
 
+/**
+ * @readonly
+ * @enum {number}
+ */
 var COLOR = { red: 0, black: 1 };
 
 /**
- * Constructor (ref Cormen, pg. 308)
+ * An augmented red-black tree that supports the following operations:
+ *
+ * - Search, Insert, Delete: O(log(n))
+ *
+ * - Minimum, Maximum, Successor, Predecessor: O(1)
+ *
+ * - Rank, WeightedRank: O(log(n))
+ *
+ * @class
+ *
+ * @param {object}  kwargs
+ * @param {(object|object[])}  kwargs.nodes
+ * An object or array of objects used to intialize nodes of the tree.  See
+ * {@link OSTree~add}.
  */
-
 function OSTree(kwargs) {
+  /**
+   * "Nil" node for tree.
+   * @access private
+   * @type {TreeNode}
+   */
   this._SENTINEL_ = _getSentinel();
+
+  /**
+   * Node with minimum TreeNode.key.
+   * @access public
+   * @type {TreeNode}
+   */
   this.minimum = this._SENTINEL_;
+
+  /**
+   * Node with maximum TreeNode.key.
+   * @access public
+   * @type {object}
+   */
   this.maximum = this._SENTINEL_;
-  this.root = kwargs.root === undefined ? this._SENTINEL_ : this.add(kwargs.root);
+
+  /**
+   * Root node of tree.
+   * @access private
+   * @type {TreeNode}
+   */
+  this.root = this._SENTINEL_;
+
+  if(kwargs.nodes) {
+    kwargs.nodes = Array.isArray(kwargs.nodes) ? kwargs.nodes : [kwargs.nodes];
+
+    for(var i = 0, len = kwargs.nodes.length; i < len; i++) {
+      this.add(kwargs.nodes[i]);
+    }
+  }
 }
 
-/**
- * Prototype
- */
 
+/**
+ * Create a node (which is not added to the tree).
+ *
+ * @param  {(Comparable|object)} keyObj
+ * An object with key, value and weight properties or an element corresponding
+ * to the key.
+ * @param  {anything} [value=key]
+ * The nodes value.
+ * @param  {number} [weight=1]
+ * Used for selecting nodes from the tree non-uniformly.  The higher a node's
+ * weight, the more likely it is to be selected.  See
+ * {@link module:ostree~OSTree~weightSelect}.
+ * @return {TreeNode}
+ * A TreeNode decorated with additional properties used to computing rank and
+ * weighted rank.
+ */
 OSTree.prototype.Node = function(keyObj, value, weight) {
   var n, key;
 
@@ -37,10 +114,12 @@ OSTree.prototype.Node = function(keyObj, value, weight) {
     key = keyObj.key;
     value = keyObj.value;
     weight = keyObj.weight;
+  } else {
+    key = keyObj;
   }
 
-  if(value === null || value === undefined) {
-    value = keyObj;
+  if(value === undefined) {
+    value = key;
   }
 
   n = treeNode.get({
@@ -58,6 +137,30 @@ OSTree.prototype.Node = function(keyObj, value, weight) {
   return n;
 };
 
+/**
+ * Public way to check if node is the sentinel node.
+ *
+ * @param  {TreeNode} node
+ *
+ * @return {boolean}
+ * true when node is sentinel.
+ */
+OSTree.prototype.isNil = function(node) {
+  return node === this._SENTINEL_;
+};
+
+/**
+ * Combines OSTree.Node with OSTree.insert.
+ *
+ * @param  {(Comparable|object)} keyObj
+ * See OSTree.Node
+ * @param  {anything} value
+ * See OSTree.Node
+ * @param  {number} weight
+ * See OSTree.Node
+ *
+ * @return {TreeNode}
+ */
 OSTree.prototype.add = function(keyObj, value, weight) {
   var m = this.Node(keyObj, value, weight);
 
@@ -66,6 +169,13 @@ OSTree.prototype.add = function(keyObj, value, weight) {
   return m;
 };
 
+/**
+ * Return node with specified key.
+ *
+ * @param  {Comparable} key
+ *
+ * @return {(TreeNode|null)}
+ */
 OSTree.prototype.search = function(key) {
   var node = this.root;
 
@@ -76,6 +186,13 @@ OSTree.prototype.search = function(key) {
   return node !== this._SENTINEL_ ? node : null;
 };
 
+/**
+ * Insert a node into the tree.
+ *
+ * @param  {TreeNode} node
+ *
+ * @return {nothing}
+ */
 OSTree.prototype.insert = function(node) {
   var m = this._SENTINEL_, n = this.root;
 
@@ -107,17 +224,22 @@ OSTree.prototype.insert = function(node) {
   _insertFixup(this, node);
 };
 
+/**
+ * Delete a node from the tree.
+ *
+ * @param  {TreeNode} node
+ *
+ * @return {nothing}
+ */
 OSTree.prototype.delete = function(node) {
   var m, n = node, nColor = n.color;
 
   if(node.left === this._SENTINEL_) {
     m = node.right;
     _transplant(this, node, node.right);
-    _fixupNextPrev(this, node, node.right);
   } else if(node.right === this._SENTINEL_) {
     m = node.left;
     _transplant(this, node, node.left);
-    _fixupNextPrev(this, node, node.left);
   } else {
     n = this.minAtNode(node.right);
     nColor = n.color;
@@ -135,13 +257,22 @@ OSTree.prototype.delete = function(node) {
     n.left = node.left;
     n.left.parent = n;
     n.color = node.color;
-    _fixupNextPrev(this, node, n);
   }
 
-  _fixupMinMaxDelete(node);
-  _deleteFixup(this, m);
+  _fixupNextPrev(this, node);
+  _fixupMinMaxDelete(this, node);
+  _deleteFixup(this, m, nColor === COLOR.black);
 };
 
+/**
+ * Find TreeNode with minimum key in subtree rooted at node.
+ *
+ * @param  {TreeNode} node
+ * Root of subtree
+ *
+ * @return {TreeNode}
+ * Node with minimum key.
+ */
 OSTree.prototype.minAtNode = function(node) {
   if(!node) {
     return null;
@@ -154,6 +285,15 @@ OSTree.prototype.minAtNode = function(node) {
   return node;
 };
 
+/**
+ * Find TreeNode with maximum key in subtree rooted at node.
+ *
+ * @param  {TreeNode} node
+ * Root of subtree
+ *
+ * @return {TreeNode}
+ * Node with maximum key.
+ */
 OSTree.prototype.maxAtNode = function(node) {
   if(!node) {
     return null;
@@ -166,47 +306,90 @@ OSTree.prototype.maxAtNode = function(node) {
   return node;
 };
 
+/**
+ * Get node with specified rank (when ordered w.r.t. keys).
+ *
+ * @param  {integer} i
+ * Desired rank.
+ *
+ * @return {(TreeNode|null)}
+ * Node with rank i.
+ */
 OSTree.prototype.rankSelect = function(i) {
   var rank, node = this.root;
 
   while(node !== this._SENTINEL_) {
-    rank = node.size;
+    rank = node.left.size + 1;
 
     if(i === rank) {
       return node;
+    } else if(i < rank) {
+      node = node.left;
+    } else {
+      node = node.right;
+      i -= rank;
     }
-
-    node = i < rank ? node.left : node.right;
   }
 
   return null;
 };
 
-OSTree.prototype.weightSelect = function(f) {
+/**
+ * Similar to OSTree.rankSelect except that TreeNode.weight values are used to
+ * compute a weighted rank.  Used to select TreeNodes from OSTree non-uniformly.
+ *
+ * @param  {number} wRank
+ * A value in the interval [0, OSTree.totalWeight()]
+ *
+ * @return {(TreeNode|null)}
+ * The TreeNode whose "rank interval" contains wRank.
+ */
+OSTree.prototype.weightSelect = function(wRank) {
   var weightL, weightR, node = this.root;
 
   while(node !== this._SENTINEL_) {
     weightL = node.left.totalWeight;
     weightR = weightL + node.weight;
 
-    if(weightL < f && f <= weightR) {
+    if(weightL < wRank && wRank <= weightR) {
       return node;
+    } else if(wRank < weightL) {
+      node = node.left;
+    } else {
+      node = node.right;
+      wRank -= weightR;
     }
-
-    node = f <= weightL ? node.left : node.right;
   }
 
   return null;
 };
 
+/**
+ * @return {integer}
+ * Total number of nodes in the tree.
+ */
 OSTree.prototype.count = function() {
   return this.root.size;
 };
 
+/**
+ * @return {number}
+ * Total weight of nodes in tree.
+ */
 OSTree.prototype.totalWeight = function() {
   return this.root.totalWeight;
 };
 
+/**
+ * Executes `fn` for every TreeNode between `node` and OSTree.root, inclusively.
+ *
+ * @param  {TreeNode}   node
+ * A node in the tree.
+ * @param  {Function} fn
+ * Callback function to execute on every node.
+ *
+ * @return {nothing}
+ */
 OSTree.prototype.forBranch = function(node, fn) {
   while(node !== this._SENTINEL_) {
     fn(node);
@@ -214,11 +397,15 @@ OSTree.prototype.forBranch = function(node, fn) {
   }
 };
 
+/**
+ * Obtain an iterator that iterates over every node in the tree.
+ * @see {@link module:traverse~Iter}
+ *
+ * @return {Iter}
+ */
 OSTree.prototype.iterator = function() {
   return traverse.iterator({
-    pre: {
-      next: this.minimum
-    },
+    first: { next: this.minimum },
     hasNext: function(curr) {
       return curr.next !== this._SENTINEL_;
     },
@@ -228,30 +415,26 @@ OSTree.prototype.iterator = function() {
   }, this);
 };
 
-/**
- * Private
- */
 
 function _osNodeDefaults(node, weight) {
   node.size = 0;
   node.weight = isNaN(weight) ? 1 : weight;
-  node.totalWeight = 0;
+  node.totalWeight = node.weight;
 }
 
 function _getSentinel() {
   var s = treeNode.get({
     key: null,
-    value: null,
-    parent: s,
-    left: s,
-    right: s,
-    next: s,
-    prev: s
+    value: null
   });
 
+  s.parent = s;
+  s.left = s;
+  s.right = s;
+  s.next = s;
+  s.prev = s;
   s.color = COLOR.black;
-  _osNodeDefaults(s);
-  s.weight = 0;
+  _osNodeDefaults(s, 0);
 
   return s;
 }
@@ -350,19 +533,24 @@ function _insertFixup(tree, node) {
   tree.root.color = COLOR.black;
 }
 
-function _deleteFixup(tree, node) {
+function _deleteFixup(tree, node, fixupColor) {
   var foundRed, setBlack = true;
 
   while(node !== tree.root) {
     foundRed = node.color === COLOR.red;
-    _setStats(node);
 
-    if(!foundRed) {
-      _colorFixup(node);
-    } else if(foundRed && setBlack) {
+    if(node !== tree._SENTINEL_) {
+      _setStats(node);
+    }
+
+    if(fixupColor && !foundRed) {
+      _colorFixup(tree, node);
+    } else if(fixupColor && foundRed && setBlack) {
       node.color = COLOR.black;
       setBlack = false;
     }
+
+    node = node.parent;
   }
 }
 
@@ -433,7 +621,7 @@ function _statFixupDesc(m, n) {
 
 function _setStats(n) {
   n.size = n.left.size + n.right.size + 1;
-  n.totalWeight = n.left.totalWeight + n.right.totalWeight + n.totalWeight;
+  n.totalWeight = n.left.totalWeight + n.right.totalWeight + n.weight;
 }
 
 function _statFixupRotate(p, m) {
@@ -442,9 +630,11 @@ function _statFixupRotate(p, m) {
 }
 
 function _fixupMinMaxInsert(tree, node) {
-  if(node.parent === tree.minimum && node === node.parent.left) {
+  if((node.parent === tree.minimum && node === node.parent.left) || tree.minimum === tree._SENTINEL_) {
     tree.minimum = node;
-  } else if(node.parent === tree.maximum && node === node.parent.right) {
+  }
+
+  if((node.parent === tree.maximum && node === node.parent.right) || tree.maximum === tree._SENTINEL_) {
     tree.maximum = node;
   }
 }
@@ -452,7 +642,9 @@ function _fixupMinMaxInsert(tree, node) {
 function _fixupMinMaxDelete(tree, node) {
   if(node === tree.minimum) {
     tree.minimum = node.right === tree._SENTINEL_ ? node.parent : tree.minAtNode(node.right);
-  } else if(node === tree.maximum) {
+  }
+
+  if(node === tree.maximum) {
     tree.maximum = node.left === tree._SENTINEL_ ? node.parent : tree.maxAtNode(node.left);
   }
 }
@@ -469,15 +661,13 @@ function _transplant(tree, m, n) {
   n.parent = m.parent;
 }
 
-function _fixupNextPrev(tree, m, n) {
-  if(m.right !== tree._SENTINEL_) {
-    m.prev.next = n;
-    n.prev = m.prev;
+function _fixupNextPrev(tree, m) {
+  if(m.next !== tree._SENTINEL_) {
+    m.next.prev = m.prev;
   }
 
-  if(m.left !== tree._SENTINEL_) {
-    m.next.prev = n;
-    n.next = m.next;
+  if(m.prev !== tree._SENTINEL_) {
+    m.prev.next = m.next;
   }
 }
 
