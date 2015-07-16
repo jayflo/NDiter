@@ -7,7 +7,7 @@ module.exports = (function() {
 })();
 
 function _pullback(fn) {
-  var args = Array.prototype.slice(arguments, 1);
+  var args = Array.prototype.slice.call(arguments, 1);
 
   return function() {
     var tmp = [];

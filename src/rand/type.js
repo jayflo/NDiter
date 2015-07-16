@@ -5,19 +5,19 @@ var unif = require('./uniform.js'),
   traverse = require('../class/traverse.js');
 
 var nextFns = {
-  float: _retPullback(_float),
-  int: _retPullback(_int),
-  char: function() { return _char; },
-  bool: function() { return _bool; },
-  string: _retPullback(_str),
-  floatArray: _retPullback(_floatArr),
-  intArray: _retPullback(_intArr),
-  strArray: _retPullback(_strArr),
-  seqValue: function(seq) { return _seqValue.bind(null, seq); },
-  key: function(obj) { return _key.bind(null, obj); },
-  objValue: function(obj) { return _objValue.bind(null, obj); },
-  shuffle: function(seq) { return _shuffle.bind(null, seq); },
-  permutation: function(seq) { return _permutation.bind(null, seq); }
+  float: pullback.bind(null, _float),
+  int: pullback.bind(null, _int),
+  char: _bind1(_char),
+  bool: _bind1(_bool),
+  string: pullback.bind(null, _str),
+  floatArray: pullback.bind(null, _floatArr),
+  intArray: pullback.bind(null, _intArr),
+  stringArray: pullback.bind(null, _strArr),
+  seqValue: _bind1(_seqValue),
+  key: _bind1(_key),
+  objValue: _bind1(_objValue),
+  shuffle: _bind1(_shuffle),
+  permutation: _bind1(_permutation),
 };
 
 module.exports = (function() {
@@ -29,7 +29,8 @@ module.exports = (function() {
     string: _str,
     floatArray: _floatArr,
     intArray: _intArr,
-    strArray: _strArr,
+    boolArray: _boolArr,
+    stringArray: _strArr,
     seqValue: _seqValue,
     key: _key,
     objValue: _objValue,
@@ -37,15 +38,15 @@ module.exports = (function() {
     permutation: _permutation,
     generator: function(type) {
       return traverse.generator({
-        next: nextFns[type].apply(null, Array.prototype.slice(arguments, 1))
+        next: nextFns[type].apply(null, Array.prototype.slice.call(arguments, 1))
       });
     }
   };
 })();
 
-function _retPullback(fn) {
+function _bind1(fn) {
   return function() {
-    return pullback.apply(null, [fn].concat(arguments));
+    return fn.bind(null, arguments.length > 0 ? arguments[0] : undefined);
   };
 }
 
@@ -59,15 +60,17 @@ function _int(a, b) {
 
 var _lowerCase = 'abcdefghijklmnopqrstuvwxyz';
 function _char() {
-  return _lowerCase[_int(0, 26)];
+  return _lowerCase[_int(0, 25)];
 }
 
 function _bool() {
   return _int(0, 1) !== 0;
 }
 
-function _str(length) {
+function _str(length, isMaxLength) {
   var s = '';
+
+  length = isMaxLength ? _int(0, length) : length;
 
   while(length-- > 0) {
     s += _char();
@@ -76,45 +79,45 @@ function _str(length) {
   return s;
 }
 
-function _array(fn, length) {
+function _array(fn, length, isMaxLength) {
   var arr = [];
+
+  length = isMaxLength ? _int(0, length) : length;
 
   while(length-- > 0) { arr.push(fn()); }
 
   return arr;
 }
 
-function _boundedArray(length, fn, a, b) {
+function _boundedArray(length, fn, a, b, isMaxLength) {
   a = a === undefined || a === null ? Number.MIN_VALUE : a;
   b = b === undefined || b === null ? Number.MAX_VALUE : b;
 
-  return _array(fn, a, b, length);
+  return _array(fn.bind(null, a, b), length, isMaxLength);
 }
 
-function _floatArr(length, a, b) {
-  return _boundedArray(length, _float, a, b);
+function _floatArr(length, a, b, isMaxLength) {
+  return _boundedArray(length, _float, a, b, isMaxLength);
 }
 
-function _intArr(length, a, b) {
-  return _boundedArray(length, _int, a, b);
+function _intArr(length, a, b, isMaxLength) {
+  return _boundedArray(length, _int, a, b, isMaxLength);
 }
 
-function _strArr(length, strLength, deterministicLength) {
-  var fn = deterministicLength ?
-    pullback(_str, strLength) :
-    pullback(_str, pullback(_int, 0, strLength));
+function _boolArr(length, isMaxLength) {
+  return _array(_bool, length, isMaxLength);
+}
 
-  return _array(fn, length);
+function _strArr(length, strLength, isMaxStringLength, isMaxArrayLength) {
+  return _array(_str.bind(null, strLength, isMaxStringLength), length, isMaxArrayLength);
 }
 
 function _seqValue(value) {
-  return value[_int(0, value.length)];
+  return value[_int(0, value.length - 1)];
 }
 
 function _key(obj) {
-  var keys = Object.keys(obj);
-
-  return keys[_int(0, keys.length)];
+  return _seqValue(Object.keys(obj));
 }
 
 function _objValue(obj) {

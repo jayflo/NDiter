@@ -534,23 +534,31 @@ function _insertFixup(tree, node) {
 }
 
 function _deleteFixup(tree, node, fixupColor) {
-  var foundRed, setBlack = true;
+  var isBlack, foundRed = false;
 
   while(node !== tree.root) {
-    foundRed = node.color === COLOR.red;
+    isBlack = node.color === COLOR.black;
 
     if(node !== tree._SENTINEL_) {
       _setStats(node);
     }
 
-    if(fixupColor && !foundRed) {
-      _colorFixup(tree, node);
-    } else if(fixupColor && foundRed && setBlack) {
-      node.color = COLOR.black;
-      setBlack = false;
+    if(fixupColor) {
+      if(isBlack && !foundRed) {
+        _colorFixup(tree, node);
+      } else if(!isBlack && !foundRed) {
+        node.color = COLOR.back;
+        foundRed = true;
+      }
     }
 
     node = node.parent;
+  }
+
+  _setStats(node);
+
+  if(!foundRed) {
+    node.color = COLOR.black;
   }
 }
 
@@ -612,6 +620,8 @@ function _colorFixup(tree, node) {
       node = tree.root;
     }
   }
+
+  return node;
 }
 
 function _statFixupDesc(m, n) {
@@ -671,14 +681,16 @@ function _fixupNextPrev(tree, m) {
   }
 }
 
-function _setNextPrev(p, m) {
-  if(m === p.left) {
-    m.prev = p.prev;
-    m.next = p;
-    p.prev = m;
+function _setNextPrev(p, node) {
+  if(node === p.left) {
+    p.prev.next = node;
+    node.prev = p.prev;
+    node.next = p;
+    p.prev = node;
   } else {
-    m.next = p.next;
-    m.prev = p;
-    p.next = m;
+    p.next.prev = node;
+    node.next = p.next;
+    node.prev = p;
+    p.next = node;
   }
 }

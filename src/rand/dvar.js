@@ -7,14 +7,14 @@ var type = require('./type.js'),
 module.exports = (function() {
   return {
     get: function(kwargs) {
-      return new Dpdf(kwargs);
+      return new DVar(kwargs);
     },
 
-    ctor: Dpdf
+    ctor: DVar
   };
 })();
 
-function Dpdf(kwargs) {
+function DVar(kwargs) {
   this._osTree = osTree.get();
   this._lookup = {};
   this._rng = type.generator('int', 0, this._osTree.totalWeight);
@@ -24,7 +24,7 @@ function Dpdf(kwargs) {
   }
 }
 
-Dpdf.prototype.add = function(keyObj, value, weight) {
+DVar.prototype.add = function(keyObj, value, weight) {
   if(keyObj.hasOwnProperty('key')) {
     keyObj = [keyObj];
   } else if(!Array.isArray(keyObj)) {
@@ -36,7 +36,7 @@ Dpdf.prototype.add = function(keyObj, value, weight) {
   }
 };
 
-Dpdf.prototype.addOrUpdate = function(keyObj, increment) {
+DVar.prototype.addOrUpdate = function(keyObj, increment) {
   if(this._lookup.hasOwnProperty(keyObj.key)) {
     (increment ? this.increment : this.setWeight)(keyObj.key, keyObj.weight);
   } else {
@@ -44,7 +44,7 @@ Dpdf.prototype.addOrUpdate = function(keyObj, increment) {
   }
 };
 
-Dpdf.prototype.delete = function(key) {
+DVar.prototype.delete = function(key) {
   if(!this._lookup.hasOwnProperty(key)) {
     return false;
   }
@@ -55,7 +55,7 @@ Dpdf.prototype.delete = function(key) {
   return true;
 };
 
-Dpdf.prototype.setWeight = function(key, weight) {
+DVar.prototype.setWeight = function(key, weight) {
   if(!this._lookup.hasOwnProperty(key)) {
     return false;
   }
@@ -69,7 +69,7 @@ Dpdf.prototype.setWeight = function(key, weight) {
   });
 };
 
-Dpdf.prototype.increment = function(key, dw) {
+DVar.prototype.increment = function(key, dw) {
   if(!this._lookup.hasOwnProperty(key)) {
     return false;
   }
@@ -77,11 +77,11 @@ Dpdf.prototype.increment = function(key, dw) {
   this.setWeight(this._lookup[key].weight + dw);
 };
 
-Dpdf.prototype.poll = function() {
+DVar.prototype.poll = function() {
   return this._osTree.weightSelect(this._rng.next());
 };
 
-Dpdf.prototype.generator = function() {
+DVar.prototype.generator = function() {
   return traverse.generator({
     next: function() {
       return this.poll();
@@ -92,6 +92,6 @@ Dpdf.prototype.generator = function() {
   }, this);
 };
 
-Dpdf.prototype.outcomeIterator = function() {
+DVar.prototype.outcomeIterator = function() {
   return this._osTree.iterator();
 };

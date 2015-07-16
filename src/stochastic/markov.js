@@ -1,7 +1,7 @@
 'use strict';
 
 var traverse = require('../class/traverse.js'),
-  dpdf = require('../randvar/dpdf.js');
+  dvar = require('../rand/dvar.js');
 
 module.exports = (function() {
   return {
@@ -58,7 +58,7 @@ Markov.prototype.train = function(outcomes, ignoreCurrentState) {
     key = outcomes[i].key;
 
     if(!this._states.hasOwnProperty(key)) {
-      this._states[key] = dpdf.get();
+      this._states[key] = dvar.get();
     }
 
     w = outcomes[i + 1].weight;
