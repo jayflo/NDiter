@@ -1,41 +1,215 @@
 'use strict';
 
+/**
+ * @module rand/type
+ * @description
+ * Provides many methods for randomly generating JS type instances.  Also serves
+ * as a factory for generators which produce type instances.  Note: all methods
+ * currently generate their values uniformly (this may be updated in the future).
+ * @see {@link module:traverse~Gen}
+ */
+
 var unif = require('./uniform.js'),
-  pullback = require('../utils/fn.js').pullback,
+  pullback = require('../misc/fn.js').pullback,
   traverse = require('../class/traverse.js');
 
+// next methods for generators
 var nextFns = {
   float: pullback.bind(null, _float),
   int: pullback.bind(null, _int),
-  char: _bind1(_char),
-  bool: _bind1(_bool),
+  char: _identity.bind(null, _char),
+  bool: _identity.bind(null, _bool),
   string: pullback.bind(null, _str),
   floatArray: pullback.bind(null, _floatArr),
   intArray: pullback.bind(null, _intArr),
   stringArray: pullback.bind(null, _strArr),
-  seqValue: _bind1(_seqValue),
-  key: _bind1(_key),
-  objValue: _bind1(_objValue),
-  shuffle: _bind1(_shuffle),
-  permutation: _bind1(_permutation),
+  seqValue: pullback.bind(null, _seqValue),
+  key: pullback.bind(null, _key),
+  objValue: pullback.bind(null, _objValue),
+  shuffle: pullback.bind(null, _shuffle),
+  permutation: pullback.bind(null, _permutation),
 };
 
 module.exports = (function() {
   return {
+    /**
+     * @function
+     * @param  {number} a
+     * upper bound
+     * @param  {number} b
+     * lower bound
+     *
+     * @return  {float}
+     * a float in the interval [a, b].
+     */
     float: _float,
+
+    /**
+     * @function
+     * @param  {number} a
+     * upper bound
+     * @param  {number} b
+     * lower bound
+     *
+     * @return  {integer}
+     * an integer in the interval [a, b].
+     */
     int: _int,
+
+    /**
+     * @function
+     * @return  {string}
+     * a (lower case) character in the range a-z.
+     */
     char: _char,
+
+    /**
+     * @function
+     * @return  {boolean}
+     * true or false.
+     */
     bool: _bool,
+
+    /**
+     * @function
+     * @param  {integer} length
+     * length of string to output.
+     * @param  {boolean} [isMaxLength=false]
+     * When true, produces a string whose length lies in the interval [0, length].
+     * When false, produces a string whose length is `length`l
+     *
+     * @return  {string}
+     * A string as specified by the parameters.
+     */
     string: _str,
+
+    /**
+     * @function
+     * @param  {integer} length
+     * length of resulting array.
+     * @param  {number} a
+     * upper bound for each float in the array
+     * @param  {number} b
+     * lower bound for each float in the array
+     * @param  {boolean} [isMaxLength=false]
+     * When true, produces an array whose length lies in the interval [0, length].
+     * When false, produces an array of length `length`.
+     *
+     * @return  {float[]}
+     * an array of floats in the interval [a, b].
+     */
     floatArray: _floatArr,
+
+    /**
+     * @function
+     * @param  {integer} length
+     * length of resulting array.
+     * @param  {number} a
+     * upper bound for each integer in the array
+     * @param  {number} b
+     * lower bound for each integer in the array
+     * @param  {boolean} [isMaxLength=false]
+     * When true, produces an array whose length lies in the interval [0, length].
+     * When false, produces an array of length `length`.
+     *
+     * @return  {integer[]}
+     * an array of integers in the interval [a, b].
+     */
     intArray: _intArr,
+
+    /**
+     * @function
+     * @param  {integer} length
+     * length of resulting array.
+     * @param  {boolean} [isMaxLength=false]
+     * When true, produces an array whose length lies in the interval [0, length].
+     * When false, produces an array of length `length`.
+     *
+     * @return  {boolean[]}
+     * an array of true/false values.
+     */
     boolArray: _boolArr,
+
+    /**
+     * @function
+     * @param  {integer} length
+     * length of resulting array.
+     * @param  {integer} stringLength
+     * length of strings to generate.
+     * @param  {boolean} [isMaxStringLength=false]
+     * When true, produces strings whose length lies in the interval [0, length].
+     * When false, produces strings whose length is `length`.
+     * @param  {boolean} [isMaxArrayLength=false]
+     * When true, produces an array whose length lies in the interval [0, length].
+     * When false, produces an array of length `length`.
+     *
+     * @return  {string[]}
+     * an array of strings.
+     */
     stringArray: _strArr,
+
+    /**
+     * @function
+     * @param  {(array|string)} seq
+     *
+     * @return  {unknown}
+     * the value at a random index of seq.
+     */
     seqValue: _seqValue,
+
+    /**
+     * @function
+     * @param  {object} obj
+     *
+     * @return  {string}
+     * A random key of obj.
+     */
     key: _key,
+
+    /**
+     * @function
+     * @param  {object} obj
+     *
+     * @return  {unknown}
+     * A random value of obj.
+     */
     objValue: _objValue,
+
+    /**
+     * @function
+     * @param  {(array|string)} seq
+     *
+     * @return  {array}
+     * A random, *in place* (irrelevant for strings) permutation of array.
+     */
     shuffle: _shuffle,
+
+    /**
+     * @function
+     * @param  {(array|string)} seq
+     *
+     * @return  {array}
+     * Creates a pertmuted copy (same as shuffle for strins) of seq.
+     */
     permutation: _permutation,
+
+    /**
+     * Provides generators whose `next` method generate random type instances
+     * as per the other methods in this module.
+     *
+     * @param  {string} typeFn
+     * The name of one of the random type instance methods, e.g. 'int', 'string',
+     * 'stringArray'.
+     * @param  {...args}
+     * The arguments specified by typeFn's signature with the exception that
+     * each argument may be replaced by a function that returns the appropriate
+     * type.  At execution, each function intercepts the `next` methods arguments,
+     * executes and provides it's value to the random instance method.
+     *
+     * @return {Gen}
+     * A generator which returns random type instances as specified by the
+     * previous arguments.
+     */
     generator: function(type) {
       return traverse.generator({
         next: nextFns[type].apply(null, Array.prototype.slice.call(arguments, 1))
@@ -44,10 +218,8 @@ module.exports = (function() {
   };
 })();
 
-function _bind1(fn) {
-  return function() {
-    return fn.bind(null, arguments.length > 0 ? arguments[0] : undefined);
-  };
+function _identity(fn) {
+  return fn;
 }
 
 function _float(a, b) {
@@ -125,7 +297,11 @@ function _objValue(obj) {
 }
 
 function _shuffle(value) {
-  var tmp, j, end = value.length - 1, max = end;
+  var tmp, j, end = value.length - 1, max = end,
+    isString = typeof value === 'string';
+
+  value = isString ? value.split('') : value;
+
 
   for(var i = 0; i < end; i++) {
     j = _int(i, max);
@@ -134,11 +310,13 @@ function _shuffle(value) {
     value[j] = value[i];
   }
 
-  return value;
+  return isString ? value.join('') : value;
 }
 
 function _permutation(value) {
-  var j, ret = [];
+  var j, ret = [], isString = typeof value === 'string';
+
+  value = isString ? value.split('') : value;
 
   for(var i = 0, len = value.length; i < len; i++) {
     j = _int(0, i);
@@ -150,5 +328,5 @@ function _permutation(value) {
     ret[j] = value[i];
   }
 
-  return ret;
+  return isString ? ret.join('') : ret;
 }

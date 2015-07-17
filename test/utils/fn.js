@@ -1,7 +1,7 @@
 'use strict';
 
 var assert = require('assert'),
-  fnMod = require('../../src/utils/fn.js');
+  fnMod = require('../../src/misc/fn.js');
 
 describe('pullback', function() {
   it('should do nothing to non-function arguments', function() {

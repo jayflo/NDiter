@@ -101,10 +101,10 @@ describe('random type generators', function() {
     });
   });
 
-  describe('generator', function() {
+  describe('generator generates random', function() {
     var span = 5;
 
-    describe('random floats', function() {
+    describe('floats', function() {
       it('with fixed endpoints', function() {
         tmp = type.generator('float', a, b);
 
@@ -122,7 +122,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random ints', function() {
+    describe('ints', function() {
       it('with fixed endpoints', function() {
         tmp = type.generator('int', a, b);
 
@@ -140,7 +140,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random chars', function() {
+    describe('chars', function() {
       it('', function() {
         tmp = type.generator('char');
 
@@ -150,7 +150,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random bools', function() {
+    describe('bools', function() {
       it('', function() {
         tmp = type.generator('bool');
 
@@ -160,7 +160,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random strings', function() {
+    describe('strings', function() {
       it('with fixed length', function() {
         tmp = type.generator('string', l);
 
@@ -190,7 +190,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random float array', function() {
+    describe('float array', function() {
       it('with fixed length', function() {
         tmp = type.generator('floatArray', l, a, b);
 
@@ -216,7 +216,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random int array', function() {
+    describe('int array', function() {
       it('with fixed length', function() {
         tmp = type.generator('intArray', l, a, b);
 
@@ -242,7 +242,7 @@ describe('random type generators', function() {
       });
     });
 
-    describe('random string array', function() {
+    describe('string array', function() {
       it('with fixed string length', function() {
         tmp = type.generator('stringArray', l, b);
 
@@ -296,7 +296,7 @@ function randStringTest(x, a, b) {
 
 function randFloatTest(x, a, b) {
   assert(a <= x && x <= b);
-  assert(!isNaN(x));
+  assert(typeof x === 'number');
 }
 
 function randIntTest(x, a, b) {

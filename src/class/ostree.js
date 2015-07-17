@@ -94,7 +94,7 @@ function OSTree(kwargs) {
 /**
  * Create a node (which is not added to the tree).
  *
- * @param  {(Comparable|object)} keyObj
+ * @param  {(string|number|object)} keyObj
  * An object with key, value and weight properties or an element corresponding
  * to the key.
  * @param  {anything} [value=key]
@@ -418,7 +418,7 @@ OSTree.prototype.iterator = function() {
 
 function _osNodeDefaults(node, weight) {
   node.size = 0;
-  node.weight = isNaN(weight) ? 1 : weight;
+  node.weight = typeof weight !== 'number' ? 1 : weight;
   node.totalWeight = node.weight;
 }
 

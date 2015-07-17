@@ -104,6 +104,16 @@ function Iter(kwargs, thisArg) {
 }
 
 /**
+ * Obtain a reference to the current item being iterated over.
+ *
+ * @return {unknown}
+ * the item being iterated over.
+ */
+Iter.prototype.current = function() {
+  return this.curr;
+};
+
+/**
  * Returns true when there are more elements to iterate over.
  *
  * @return {boolean}
