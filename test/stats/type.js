@@ -1,7 +1,7 @@
 'use strict';
 
 var assert = require('assert'),
-  type = require('../../src/rand/type.js');
+  rand = require('../../src/js/rand.js');
 
 var _lowerCase = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -10,40 +10,40 @@ describe('random type generators', function() {
 
   describe('float', function() {
     it('should generate a random float', function() {
-      randFloatTest(type.float(a, b), a, b);
+      randFloatTest(rand.float(a, b), a, b);
     });
   });
 
   describe('int', function() {
     it('should generate a random int', function() {
-      randIntTest(type.int(a, b), a, b);
+      randIntTest(rand.int(a, b), a, b);
     });
   });
 
   describe('char', function() {
     it('should generate a random char', function() {
-      tmp = type.char();
+      tmp = rand.char();
       assert(_lowerCase.indexOf(tmp) > -1);
     });
   });
 
   describe('boolean', function() {
     it('should generate a random boolean', function() {
-      assert(typeof type.bool() === 'boolean');
+      assert(typeof rand.bool() === 'boolean');
     });
   });
 
   describe('string', function() {
     it('should generate a random string', function() {
-      randStringTest(type.string(l), l, l);
-      randStringTest(type.string(l, true), 0, l);
+      randStringTest(rand.string(l), l, l);
+      randStringTest(rand.string(l, true), 0, l);
     });
   });
 
   describe('floatArr', function() {
     it('should generate a random floatArr', function() {
       randArrayTest(
-        type.floatArray(l, a, b),
+        rand.floatArray(l, a, b),
         randFloatTest,
         l, a, b
       );
@@ -53,7 +53,7 @@ describe('random type generators', function() {
   describe('intArray', function() {
     it('should generate a random intArray', function() {
       randArrayTest(
-        type.intArray(l, a, b),
+        rand.intArray(l, a, b),
         randIntTest,
         l, a, b
       );
@@ -63,13 +63,13 @@ describe('random type generators', function() {
   describe('stringArray', function() {
     it('should generate a random stringArray', function() {
       randArrayTest(
-        type.stringArray(l, l, true),
+        rand.stringArray(l, l, true),
         randStringTest,
         l, l, l
       );
 
       randArrayTest(
-        type.stringArray(l, l, false),
+        rand.stringArray(l, l, false),
         randStringTest,
         l, 0, l
       );
@@ -78,13 +78,13 @@ describe('random type generators', function() {
 
   describe('sequence value', function() {
     it('should generate a random sequence value', function() {
-      var arr = type.stringArray(l, l);
-      tmp = type.seqValue(arr);
+      var arr = rand.stringArray(l, l);
+      tmp = rand.seqValue(arr);
 
       assert(arr.indexOf(tmp) > -1);
 
-      arr = type.string(l);
-      tmp = type.seqValue(arr);
+      arr = rand.string(l);
+      tmp = rand.seqValue(arr);
 
       assert(arr.indexOf(tmp) > -1);
     });
@@ -94,10 +94,10 @@ describe('random type generators', function() {
     it('should generate a random object key/value', function() {
       tmp = { a: 1, b: 2, c: 3 };
 
-      var key = type.key(tmp);
+      var key = rand.key(tmp);
 
       assert(tmp.hasOwnProperty(key));
-      assert([1,2,3].indexOf(type.objValue(tmp) > -1));
+      assert([1,2,3].indexOf(rand.objValue(tmp) > -1));
     });
   });
 
@@ -106,7 +106,7 @@ describe('random type generators', function() {
 
     describe('floats', function() {
       it('with fixed endpoints', function() {
-        tmp = type.generator('float', a, b);
+        tmp = rand.generator('float', a, b);
 
         for(var i = 0; i < l; i++) {
           randFloatTest(tmp.next(), a, b);
@@ -114,7 +114,7 @@ describe('random type generators', function() {
       });
 
       it('with function endpoints', function() {
-        tmp = type.generator('float', left, right);
+        tmp = rand.generator('float', left, right);
 
         for(var i = 0; i < l; i++) {
           randFloatTest(tmp.next(), tmp.iterations - 1, tmp.iterations + span - 1);
@@ -124,7 +124,7 @@ describe('random type generators', function() {
 
     describe('ints', function() {
       it('with fixed endpoints', function() {
-        tmp = type.generator('int', a, b);
+        tmp = rand.generator('int', a, b);
 
         for(var i = 0; i < l; i++) {
           randIntTest(tmp.next(), a, b);
@@ -132,7 +132,7 @@ describe('random type generators', function() {
       });
 
       it('with function endpoints', function() {
-        tmp = type.generator('int', left, right);
+        tmp = rand.generator('int', left, right);
 
         for(var i = 0; i < l; i++) {
           randIntTest(tmp.next(), left(0, tmp.iterations - 1), right(0, tmp.iterations- 1));
@@ -142,7 +142,7 @@ describe('random type generators', function() {
 
     describe('chars', function() {
       it('', function() {
-        tmp = type.generator('char');
+        tmp = rand.generator('char');
 
         for(var i = 0; i < l; i++) {
           assert(_lowerCase.indexOf(tmp.next()) > -1);
@@ -152,7 +152,7 @@ describe('random type generators', function() {
 
     describe('bools', function() {
       it('', function() {
-        tmp = type.generator('bool');
+        tmp = rand.generator('bool');
 
         for(var i = 0; i < l; i++) {
           assert(typeof tmp.next() === 'boolean');
@@ -162,13 +162,13 @@ describe('random type generators', function() {
 
     describe('strings', function() {
       it('with fixed length', function() {
-        tmp = type.generator('string', l);
+        tmp = rand.generator('string', l);
 
         for(var i = 0; i < l; i++) {
           randStringTest(tmp.next(), l, l);
         }
 
-        tmp = type.generator('string', l, true);
+        tmp = rand.generator('string', l, true);
 
         for(i = 0; i < l; i++) {
           randStringTest(tmp.next(), 0, l);
@@ -176,13 +176,13 @@ describe('random type generators', function() {
       });
 
       it('with function length', function() {
-        tmp = type.generator('string', right);
+        tmp = rand.generator('string', right);
 
         for(var i = 0; i < l; i++) {
           randStringTest(tmp.next(), right(0, tmp.iterations - 1), right(0, tmp.iterations - 1));
         }
 
-        tmp = type.generator('string', right, true);
+        tmp = rand.generator('string', right, true);
 
         for(i = 0; i < l; i++) {
           randStringTest(tmp.next(), 0, right(0, tmp.iterations - 1));
@@ -192,7 +192,7 @@ describe('random type generators', function() {
 
     describe('float array', function() {
       it('with fixed length', function() {
-        tmp = type.generator('floatArray', l, a, b);
+        tmp = rand.generator('floatArray', l, a, b);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(
@@ -204,7 +204,7 @@ describe('random type generators', function() {
       });
 
       it('with function length', function() {
-        tmp = type.generator('floatArray', l, 0, right);
+        tmp = rand.generator('floatArray', l, 0, right);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(
@@ -218,7 +218,7 @@ describe('random type generators', function() {
 
     describe('int array', function() {
       it('with fixed length', function() {
-        tmp = type.generator('intArray', l, a, b);
+        tmp = rand.generator('intArray', l, a, b);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(
@@ -230,7 +230,7 @@ describe('random type generators', function() {
       });
 
       it('with function length', function() {
-        tmp = type.generator('intArray', l, 0, right);
+        tmp = rand.generator('intArray', l, 0, right);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(
@@ -244,7 +244,7 @@ describe('random type generators', function() {
 
     describe('string array', function() {
       it('with fixed string length', function() {
-        tmp = type.generator('stringArray', l, b);
+        tmp = rand.generator('stringArray', l, b);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(
@@ -256,7 +256,7 @@ describe('random type generators', function() {
       });
 
       it('with function string length', function() {
-        tmp = type.generator('stringArray', l, 0, right);
+        tmp = rand.generator('stringArray', l, 0, right);
 
         for(var i = 0; i < l; i++) {
           randArrayTest(

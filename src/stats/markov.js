@@ -5,7 +5,7 @@
  */
 
 var traverse = require('../class/traverse.js'),
-  dvar = require('../rand/dvar.js');
+  dvar = require('./dvar.js');
 
 module.exports = (function() {
   return {
@@ -49,7 +49,7 @@ module.exports = (function() {
  * "experimentally measured" training sequences are provided to the Markov process,
  * the more accurate the Markov process wil be in computing future states.
  *
- * Note: 
+ * Note:
  * This class inherits from {@link module:traverse~Gen} and the `next` method
  * is used to transition states and return the outcome values.
  *

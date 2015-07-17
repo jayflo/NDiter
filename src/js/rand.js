@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * @module rand/type
+ * @module rand
  * @description
  * Provides many methods for randomly generating JS type instances.  Also serves
  * as a factory for generators which produce type instances.  Note: all methods
@@ -9,8 +9,8 @@
  * @see {@link module:traverse~Gen}
  */
 
-var unif = require('./uniform.js'),
-  pullback = require('../misc/fn.js').pullback,
+var unif = require('../stats/cpds/uniform.js'),
+  pullback = require('../js/fn.js').pullback,
   traverse = require('../class/traverse.js');
 
 // next methods for generators

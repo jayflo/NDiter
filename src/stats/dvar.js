@@ -4,7 +4,7 @@
  * @module dvar
  */
 
-var type = require('./type.js'),
+var rand = require('../js/rand.js'),
   osTree = require('../class/ostree.js'),
   traverse = require('../class/traverse.js');
 
@@ -85,7 +85,7 @@ function DVar(kwargs) {
    * @access private
    * @type {module:traverse~Gen}
    */
-  this._rng = type.generator('int', 0, this._osTree.totalWeight);
+  this._rng = rand.generator('float', 0, this._osTree.totalWeight);
 
   if(kwargs.outcomes) {
     this.add(kwargs.outcomes);

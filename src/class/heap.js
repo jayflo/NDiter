@@ -1,5 +1,9 @@
 'use strict';
 
+/**
+ * @module heap
+ */
+
 module.exports = (function() {
   return {
     get: function(kwargs) {

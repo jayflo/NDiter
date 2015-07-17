@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * @module misc/fn
+ * @module fn
  */
 
 module.exports = (function() {
