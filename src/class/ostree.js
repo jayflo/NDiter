@@ -90,7 +90,6 @@ function OSTree(kwargs) {
   }
 }
 
-
 /**
  * Create a node (which is not added to the tree).
  *
@@ -112,8 +111,8 @@ OSTree.prototype.Node = function(keyObj, value, weight) {
 
   if(keyObj.hasOwnProperty('key')) {
     key = keyObj.key;
-    value = keyObj.value;
-    weight = keyObj.weight;
+    value = keyObj.value !== undefined ? keyObj.value : value;
+    weight = typeof keyObj.weight === 'number' ? keyObj.weight : weight;
   } else {
     key = keyObj;
   }
@@ -194,7 +193,7 @@ OSTree.prototype.search = function(key) {
  * @return {nothing}
  */
 OSTree.prototype.insert = function(node) {
-  var m = this._SENTINEL_, n = this.root;
+  var l, m = this._SENTINEL_, n = this.root;
 
   while(n !== this._SENTINEL_) {
     _statFixupDesc(n, node);
@@ -207,7 +206,11 @@ OSTree.prototype.insert = function(node) {
   if(m === this._SENTINEL_) {
     this.root = node;
   } else {
-    if(node.key < m.key) {
+    if (node.key === m.key) {
+      l = Math.round(Math.random()) === 0;
+    }
+
+    if (node.key < m.key || l) {
       m.left = node;
     } else {
       m.right = node;
@@ -398,13 +401,13 @@ OSTree.prototype.forBranch = function(node, fn) {
 };
 
 /**
- * Obtain an iterator that iterates over every node in the tree.
+ * Obtain an iterator that iterates over every node in key sorted order.
  * @see {@link module:traverse~Iter}
  *
  * @return {Iter}
  */
-OSTree.prototype.iterator = function() {
-  return traverse.iterator({
+OSTree.prototype.iterator = function(ccb) {
+  var args = {
     first: { next: this.minimum },
     hasNext: function(curr) {
       return curr.next !== this._SENTINEL_;
@@ -412,7 +415,13 @@ OSTree.prototype.iterator = function() {
     next: function(curr) {
       return curr.next;
     }
-  }, this);
+  };
+
+  if(ccb) {
+    args.clean = ccb;
+  }
+
+  return traverse.iterator(args, this);
 };
 
 

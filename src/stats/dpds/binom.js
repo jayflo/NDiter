@@ -10,7 +10,7 @@ module.exports = (function() {
   return {
 
     /**
-     * Create a random variable following the binomial distribution.  Given an
+     * Creates a {@link module:dvar~DVar} following the binomial distribution.  Given an
      * event that succeeds with probability p, the distribution binom(n, p)
      * provides the probability of obtaining k successes in n trials, where
      * k=1,2,...,n.
@@ -22,11 +22,11 @@ module.exports = (function() {
      * is an array when length l, creates a DVar following binom(l, p) and the
      * object at index k provides the key, value information for the outcome
      * representing k successes.  Hence, each object should have properties 'key'
-     * and 'value'.
+     * and 'value', see {@link module:dvar~DVar~add}.
      * @param  {number} p
      * A number 0 <= p <= 1 representing the probability of the event's success.
      */
-    binom: _binom
+    get: _binom
   };
 })();
 
@@ -54,7 +54,7 @@ function _binom(nArr, p) {
   return dvar;
 
   function addWithArray(k) {
-    rv.add(nArr[k].key, bc[k] * Math.pow(p, k) * Math.pow(lp, n - k), nArr[k].value);
+    rv.add(nArr[k], bc[k] * Math.pow(p, k) * Math.pow(lp, n - k));
   }
 
   function noArray(k) {

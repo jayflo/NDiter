@@ -40,10 +40,11 @@ module.exports = (function() {
  * collection of "weighted" outcomes.  A weight corresponds to the probability
  * in which the outcome will occur.  It is not necessary for the weight's sum
  * to equal 1 (which is why refrain from calling weight the "probability").
- * Rather, the weight of an outcome says how likely it is as compared to other
- * outocomes.  The probability of an outcome is computed as it's weight divided
+ * Rather, the weight of an outcome says how likely it occurs compared to other
+ * outcomes.  The probability of an outcome is computed as it's weight divided
  * by the total weight of all outcomes for the DVar.
  * @class
+ * @augments module:traverse~Gen
  * @example
  * Outcome A
  * Weight: 1
@@ -70,7 +71,6 @@ module.exports = (function() {
 function DVar(kwargs) {
 
   /**
-   * @access private
    * @type {module:ostree~OSTree}
    */
   this._osTree = osTree.get();
@@ -79,7 +79,7 @@ function DVar(kwargs) {
    * @access private
    * @type {object}
    */
-  this._lookup = {};
+  this._nodes = {};
 
   /**
    * @access private
@@ -90,31 +90,53 @@ function DVar(kwargs) {
   if(kwargs.outcomes) {
     this.add(kwargs.outcomes);
   }
+
+  traverse.genCtor.call(this, {
+    next: this._poll().value
+  }, this);
 }
+
+DVar.prototype = Object.create(traverse.genCtor.prototype);
 
 /**
  * Add new outcomes to the DVar.
  *
- * @param  {(string|number|object)} keyObj
- * An object with key, weight and value properties or an element corresponding
- * to the key.
+ * @param  {(string|number|object)} outcomeObj
+ * A string or number used to label the outcome or an object with 'outcome',
+ * 'value' and 'weight' properties.
  * @param  {number} [weight=1]
  * Used for selecting nodes from the tree non-uniformly.  The higher a node's
  * weight, the more likely it is to be selected.
  * @param  {anything} [value=key]
- * The nodes value.
+ * A value associated to the outcome which is provided when the outcome occurrs.
  *
  * @return {nothing}
  */
-DVar.prototype.add = function(keyObj, weight, value) {
-  this._lookup[keyObj.key] = this._osTree.add(keyObj, value, weight);
+DVar.prototype.add = function(outcomeObj, weight, value) {
+  var outcome, key;
+
+  if(outcomeObj.hasOwnProperty('outcome')) {
+    outcome = outcomeObj.outcome;
+    weight = typeof outcomeObj.weight === 'number' ? outcomeObj.weight : weight;
+  } else {
+    outcome = outcomeObj;
+  }
+
+  weight = typeof weight === 'number' ? weight : 1;
+  key = weight;
+  value = {
+    outcome: outcome,
+    value: typeof outcomeObj.value === undefined ? value : outcomeObj.value
+  };
+
+  this._nodes[outcome] = this._osTree.add(key, value, weight);
 };
 
 /**
  * Add an outcome or update its weight when it already exists.
  *
- * @param  {(string|number|object)} keyObj
- * An outcome's key or an object having 'key', 'weight' and 'value' properties.
+ * @param  {(string|number|object)} outcomeObj
+ * An outcome's key or an object having 'outcome', 'weight' and 'value' properties.
  * @param  {number} [weight=1]
  * @param  {anything} [value=key value]
  * @param  {boolean} [adjustWeight=false]
@@ -123,31 +145,31 @@ DVar.prototype.add = function(keyObj, weight, value) {
  *
  * @return {nothing}
  */
-DVar.prototype.include = function(keyObj, weight, value, adjustWeight) {
-  var w, key = keyObj.hasOwnProperty('key') ? keyObj.key : keyObj;
+DVar.prototype.include = function(outcomeObj, weight, value, adjustWeight) {
+  var w, outcome = outcomeObj.hasOwnProperty('outcome') ? outcomeObj.outcome : outcomeObj;
 
-  if(this._lookup.hasOwnProperty(key)) {
-    w = typeof weight === 'number' ? weight : keyObj.weight;
-    (adjustWeight ? this.adjustWeight : this.setWeight)(key, w);
+  if(this._nodes.hasOwnProperty(outcome)) {
+    w = typeof weight === 'number' ? weight : outcomeObj.weight;
+    (adjustWeight ? this.adjustWeight : this.setWeight)(outcome, w);
   } else {
-    this.add(keyObj, weight, value);
+    this.add(outcomeObj, weight, value);
   }
 };
 
 /**
  * Remove an outcome from the DVar
  *
- * @param  {(string|number)} key
+ * @param  {(string|number)} outcome
  * Key specifying the outcome to be removed.
  *
  * @return {object}
  * The removed outcome.
  */
-DVar.prototype.delete = function(key) {
-  var tmp = this._lookup[key];
+DVar.prototype.delete = function(outcome) {
+  var tmp = this._nodes[outcome];
 
   this._osTree.delete(tmp);
-  delete this._lookup[key];
+  delete this._nodes[outcome];
 
   return tmp;
 };
@@ -155,164 +177,147 @@ DVar.prototype.delete = function(key) {
 /**
  * Change the weight of an outcome.
  *
- * @param  {(string|number)} key
+ * @param  {(string|number)} outcome
  * @param  {number} weight
  *
  * @return {nothing}
  */
-DVar.prototype.setWeight = function(key, weight) {
-  var node = this._lookup[key],
+DVar.prototype.setWeight = function(outcome, weight) {
+  var node = this._nodes[outcome],
     dw = weight - node.weight;
 
+  node.key = weight;
   node.weight = weight;
-  this._osTree.forBranch(node, function(n) {
-    n.totalWeight += dw;
-  });
+
+  if(node.prev.weight <= weight && weight <= node.next.weight) {
+    this._osTree.forBranch(node, function(n) {
+      n.totalWeight += dw;
+    });
+  } else {
+    this._osTree.delete(node);
+    this._osTree.insert(node);
+  }
 };
 
 /**
  * Adjust an outcome's weight by an amount.
  *
- * @param  {(string|number)} key
+ * @param  {(string|number)} outcome
  * @param  {number} dw
  * The amount to add to the outcome's current weight.  When dw < 0, the outcome's
  * weight is decreased.
  *
  * @return {nothing}
  */
-DVar.prototype.adjustWeight = function(key, dw) {
-  this.setWeight(this._lookup[key].weight + dw);
+DVar.prototype.adjustWeight = function(outcome, dw) {
+  this.setWeight(this._nodes[outcome].weight + dw);
 };
 
 /**
  * Evaluate the random variable.  When outcome's have varying weights, the DVar's
- * outcomes will be non-uniform.  Note: this method is equivalent to `poll`
- * except that this method returns the entire outcome object, rather than just
- * the value.
+ * outcomes will be non-uniform.  Note: use DVar's next method to generate outcome
+ * values, rather than complete outcome objects.
  *
  * @return {object}
- * The object having 'key', 'weight' and 'value' keys specifying an outcome.
+ * The object having 'outcome', 'weight' and 'value' properties specifying an outcome.
  */
 DVar.prototype._poll = function() {
-  return this._osTree.weightSelect(this._rng.next());
+  return _nodeToOutcome(this._osTree.weightSelect(this._rng.next()));
 };
 
 /**
- * Evaluate the random variable.  When outcome's have varying weights, the DVar's
- * outcomes will be non-uniform.
- *
- * @return {unknown}
- * The `value` of the outcome which occurred.
- */
-DVar.prototype.poll = function() {
-  return this._poll().value;
-};
-
-/**
- * @param  {(string|number)} key
- * The key of an outcome.
+ * @param  {(string|number)} outcome
+ * The outcome of an outcome.
  *
  * @return {number}
  * The probability that the outcome occurs.
  */
-DVar.prototype.prEq = function(key) {
-  if(!this._lookup.hasOwnProperty(key)) {
+DVar.prototype.prEq = function(outcome) {
+  if(!this._nodes.hasOwnProperty(outcome)) {
     return 0;
   }
 
-  return this._lookup[key].weight / this._osTree.totalWeight();
+  return this._nodes[outcome].weight / this._osTree.totalWeight();
 };
 
 /**
- * Compute the expected value of the random variable.  Similarly to an array's
- * reduce method, `expectation` iterates over the outcomes' values and must
- * produce a final single output.  When no arguments are passed to this method,
- * its action defaults to the standard expectation formula, e.g.
+ * Compute a moment of the probability distribution, e.g. the first moment about
+ * 0 (aka raw moment) is the mean (or average) and the second central moment (aka
+ * about the mean) is the variance (whose square root is the standard deviation).
+ * Passing no arguments computes the expectation under the assumption that outcome
+ * values are numerical.
  *
- * \sum_{v_i} (v_i * p(v_i))
+ * @param  {integer} [moment=1]
+ * The moment to compute.
+ * @param  {number} [axis=0]
+ * The axis about which the moment is computed.
+ * @param  {Function} [hash=identity]
+ * Moments are computed using outcome values.  When outcome values are not numerical,
+ * a hash can be passed which determines each outcome's "size."
  *
- * which likely only makes sense when outcomes' values are numbers.
- *
- * @param  {Function} [callback]
- * A function receiving (initValue or) the callback's previous output, the
- * current outcome's value and it's probability.
- * @param  {anything} initValue
- * A starting value.
- *
- * @return {unknown}
+ * @return {number}
+ * The computed moment.
  */
-DVar.prototype.expectation = function(callback, initValue) {
-  var tmp, iter = this.outcomeIterator(), tw = this._osTree.totalWeight();
+DVar.prototype.moment = function(moment, axis, hash) {
+  var tmp, sum = 0, iter = this.outcomeIterator(), tw = this._osTree.totalWeight();
 
-  if(!callback) {
-    callback = _expectation;
-    initValue = 0;
-  }
+  moment = typeof moment === 'number' ? moment : 1;
+  axis = typeof axis === 'number' ? axis : 0;
+  hash = typeof hash === 'function' ? hash : _identity;
 
   while(iter.hasNext()) {
     tmp = iter.next();
-    initValue = callback(initValue, tmp.value, tmp.weight / tw);
+    sum += Math.pow(hash(tmp.value.value) - axis, moment) * (tmp.weight / tw);
   }
 
-  return initValue;
+  return sum;
 };
 
 /**
- * Compute the variance of the random variable.  Similarly to an array's
- * reduce method, `variance` iterates over the outcome's value and must
- * produce a final single output.  When no arguments are passed to this method,
- * its action defaults to the standard variance formula, e.g.
+ * A convenience method for variance.  Since moments are computed on-the-fly,
+ * this method will use an already computed expectation value when supplied.  If
+ * that expectation value is not up to date, the computation will be incorrect.
  *
- * \sum_{v_i} (v_i * expectation)^2 * p(v_i)
+ * @param  {number} expectation
+ * A pre-computed expectation.
+ * @param  {Function} hash
+ * Moments are computed using outcome values.  When outcome values are not numerical,
+ * a hash can be passed which determines each outcome's "size."
+ * @param  {boolean} stddev
+ * When true, returns the standard deviation.  When false, returns variance.
  *
- * which likely only makes sense when outcomes' values are numbers.
- *
- * @param  {unknown}  [expectation]
- * The random variable's expectation.
- * @param  {Function} [callback]
- * A function receiving (initValue or) the callback's previous output, the
- * current outcome's value, the current outcome's probability and the
- * expectation of the random variable.
- * @param  {anything} initValue
- * A starting value.
- *
- * @return {unknown}
- * The computed variance.
+ * @return {number}
+ * The computed variance or standard deviation.
  */
-DVar.prototype.variance = function(expectation, callback, initValue) {
-  var tmp, iter = this.outcomeIterator(), tw = this._osTree.totalWeight();
+DVar.prototype.variance = function(expectation, hash, stddev) {
+  var v;
 
-  expectation = expectation || this.expectation();
+  hash = typeof hash === 'function' ? hash : _identity;
+  expectation = typeof expectation === 'number' ? expectation : this.moment(1, 0, hash);
+  v = this.moment(2, expectation, hash);
 
-  if(!callback) {
-    callback = _variance;
-    initValue = 0;
-  }
-
-  while(iter.hasNext()) {
-    tmp = iter.next();
-    initValue = callback(initValue, tmp.value, tmp.weight / tw, expectation);
-  }
-
-  return initValue;
+  return stddev ? Math.sqrt(v) : v;
 };
 
 /**
  * Similar to `expect` except the outcome object is returned, rather than only
  * it's value.
  *
- * @return {object}
- * The outcome having the highest weight.
+ * @return {object[]}
+ * The outcomes having the highest weight.
  */
-DVar.prototype._expect = function() {
-  var tmp, max = { weight: Number.MIN_VALUE }, iter = this.iterator();
+DVar.prototype._expect = function(cb) {
+  var tmp, n = this._osTree.maximum;
 
-  while(iter.hasNext()) {
-    tmp = iter.next();
-    max = tmp.weight > max.weight ? tmp : max;
+  cb = cb || _nodeToOutcome;
+  tmp = [cb(n)];
+
+  while(n.prev.key === n.key) {
+    n = n.prev;
+    tmp.push(cb(n));
   }
 
-  return max;
+  return tmp;
 };
 
 /**
@@ -320,14 +325,12 @@ DVar.prototype._expect = function() {
  * of the outcome which is most likely to occur (we refrain from using 'likely'
  * or 'likelihood' as these refer to other probability concepts and don't want
  * to confuse them here).
- * @todo complexity for this method is currently O(n), where n is the number of
- * outcomes, but DVar may be adjusted to make this O(1) if it is highly used.
  *
- * @return {unknown}
- * The value of the outcome with highest weight.
+ * @return {array}
+ * An array of values for outcomes having the highest weight.
  */
 DVar.prototype.expect = function() {
-  return this._expect().value;
+  return this._expect(function(n) { return n.value.value; });
 };
 
 /**
@@ -344,22 +347,24 @@ DVar.prototype.generator = function() {
 };
 
 /**
- * An iterator that iterates over outcomes of the DVar instance in key
+ * An iterator that iterates over outcomes of the DVar instance in weight
  * ascending order.
  *
  * @return {Iter}
  * See {@link module:traverse~Iter}
  */
 DVar.prototype.outcomeIterator = function() {
-  return this._osTree.iterator();
+  return this._osTree.iterator(_nodeToOutcome);
 };
 
-function _expectation(prev, curr, p) {
-  return prev += (curr * p);
+function _nodeToOutcome(node) {
+  return {
+    outcome: node.value.outcome,
+    value: node.value.value,
+    weight: node.key
+  };
 }
 
-function _variance(prev, curr, m, p) {
-  var dcurr = curr - m;
-
-  return prev += (dcurr * dcurr * p);
+function _identity(value) {
+  return value;
 }
